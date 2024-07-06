@@ -10,6 +10,7 @@ import { NounsAuctionHouse } from '../../contracts/NounsAuctionHouse.sol';
 import { INounsAuctionHouseV2 as IAH } from '../../contracts/interfaces/INounsAuctionHouseV2.sol';
 import { NounsAuctionHouseV2 } from '../../contracts/NounsAuctionHouseV2.sol';
 import { BidderWithGasGriefing } from './helpers/BidderWithGasGriefing.sol';
+import { MockEntropy } from '../../contracts/MockEntropy.sol';
 
 contract NounsAuctionHouseV2TestBase is Test, DeployUtils {
     address owner = address(0x1111);
@@ -17,6 +18,7 @@ contract NounsAuctionHouseV2TestBase is Test, DeployUtils {
     address minter = address(0x3333);
     uint256[] nounIds;
     uint32 timestamp = 1702289583;
+    MockEntropy mockEntropy;
 
     NounsAuctionHouseV2 auction;
 
@@ -31,6 +33,14 @@ contract NounsAuctionHouseV2TestBase is Test, DeployUtils {
         AuctionHouseUpgrader.upgradeAuctionHouse(owner, proxyAdmin, auctionProxy);
 
         auction = NounsAuctionHouseV2(address(auctionProxy));
+
+        // Deploy the mock entropy contract
+        // Deploy the MockEntropy contract
+        mockEntropy = new MockEntropy(bytes32(0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef));
+
+        // Set the mock entropy contract in the auction house
+        vm.prank(owner);
+        auction.setEntropy(address(mockEntropy));
 
         vm.prank(owner);
         auction.unpause();
@@ -976,5 +986,341 @@ contract NounsAuctionHouseV2_OwnerFunctionsTest is NounsAuctionHouseV2TestBase {
         auction.setTimeBuffer(1 days);
 
         assertEq(auction.timeBuffer(), 1 days);
+    }
+}
+
+contract NounsAuctionHouseV2QueueTest is NounsAuctionHouseV2TestBase {
+    address bidder = makeAddr('bidder');
+    function setUp() public override {
+        super.setUp();
+        bidAndWinCurrentAuction(bidder, 1 ether);
+        
+        // Approve the auction contract to transfer NFTs on behalf of the bidder
+        vm.startPrank(bidder);
+        auction.nouns().setApprovalForAll(address(auction), true);
+        vm.stopPrank();
+    }
+
+    function test_addToAuctionQueue() public {
+        uint256 tokenId = 1;
+    
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId);
+
+        assertEq(auction.auctionQueue(0), tokenId);
+        assertEq(auction.nftOwners(tokenId), bidder);
+        assertEq(auction.getAuctionQueueLength(), 1); // Access length directly
+    }
+
+    // Function to test to make sure non owner cant add to queue
+    function test_addToAuctionQueue_revertsForNonOwner() public {
+        uint256 tokenId = 1;
+        
+        vm.prank(minter);
+        vm.expectRevert('Not the owner of the NFT');
+        auction.addToAuctionQueue(tokenId);
+    }
+
+    function test_removeFromAuctionQueue() public {
+        uint256 tokenId = 1;
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId);
+        vm.prank(bidder);
+        auction.removeFromAuctionQueue(tokenId);
+        assertEq(auction.getAuctionQueueLength(), 0); // Access length directly
+        assertEq(auction.nftOwners(tokenId), address(0));
+    }
+
+    // Function to test to make sure non owner cant remove from queue
+    function test_removeFromAuctionQueue_revertsForNonOwner() public {
+        uint256 tokenId = 1;
+
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId);
+        
+        vm.prank(minter);
+        vm.expectRevert('Not the owner of the NFT');
+        auction.removeFromAuctionQueue(tokenId);
+    }
+
+    function test_createAuction_selectsFromQueue() public {
+        uint256 tokenId = 1;
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId);
+        endAuctionAndSettle();
+        assertEq(auction.auction().nounId, tokenId);
+    }
+
+    function test_createAuction_mintsIfQueueEmpty() public {
+        endAuctionAndSettle();
+        uint256 nounId = auction.auction().nounId;
+        assertEq(auction.nftOwners(nounId), address(0));
+    }
+
+    function test_settleAuction_proceedsToOriginalOwner() public {
+        uint256 tokenId = 1;
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId);
+        endAuctionAndSettle();
+        address newBidder = address(0x5555);
+        vm.deal(newBidder, 1 ether);
+        vm.prank(newBidder);
+        auction.createBid{ value: 1 ether }(tokenId);
+        endAuctionAndSettle();
+        assertEq(bidder.balance, 1 ether);
+    }
+
+    function test_settleAuction_proceedsToTreasury() public {
+        endAuctionAndSettle();
+
+        // Set treasury to owner
+        vm.prank(auction.owner());
+        auction.setTreasury(owner);
+
+
+        uint256 nounId = auction.auction().nounId;
+        address newBidder = address(0x4444);
+        vm.deal(newBidder, 1 ether);
+        vm.prank(newBidder);
+        auction.createBid{ value: 1 ether }(nounId);
+        
+        // Get the current balance of the treasury (which should be the owner)
+        address treasury = auction.treasury();
+        emit log_named_address("Treasury address", treasury);
+        emit log_named_address("Owner address", auction.owner());
+        uint256 treasuryBalance = treasury.balance;
+        
+        
+        endAuctionAndSettle();
+        
+        // Check that the treasury balance has increased by 1 ether
+        assertEq(treasury.balance, treasuryBalance + 1 ether);
+    }
+
+    function test_reAddToQueueIfNoBids() public {
+        uint256 tokenId = 1;
+        address Aowner = auction.owner();
+        
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId);
+
+        // End auction with no bids and create new auction with token 1
+        endAuctionAndSettle();
+
+        // Pause auction and settle without creating new auction to check token 1 is re-added to the queue
+        uint40 endTime = auction.auction().endTime;
+        vm.warp(endTime + 1);
+        vm.prank(Aowner);
+        auction.pause();
+        auction.settleAuction();
+
+        assertEq(auction.auctionQueue(0), tokenId);
+        assertEq(auction.nftOwners(tokenId), bidder);
+
+        vm.prank(Aowner);
+        auction.unpause();
+
+        endTime = auction.auction().endTime;
+        vm.warp(endTime + 1);
+        vm.prank(Aowner);
+        auction.pause();
+        auction.settleAuction();
+
+        // End auction with no bids AGAIN then check if it's re-added to the queue
+        assertEq(auction.auctionQueue(0), tokenId);
+        assertEq(auction.nftOwners(tokenId), bidder);
+    }
+}
+
+contract NounsAuctionHouseV2TreasuryTest is NounsAuctionHouseV2TestBase {
+    address bidder = makeAddr('bidder');
+    function setUp() public override {
+        super.setUp();
+        bidAndWinCurrentAuction(bidder, 1 ether);
+        
+        // Approve the auction contract to transfer NFTs on behalf of the bidder
+        vm.startPrank(bidder);
+        auction.nouns().setApprovalForAll(address(auction), true);
+        vm.stopPrank();
+    }
+
+    function test_setTreasury_revertsForNonOwner() public {
+         address newTreasury = address(0x6666);
+         vm.expectRevert('Ownable: caller is not the owner');
+         auction.setTreasury(newTreasury);
+     }
+ 
+     function test_setTreasury_worksForOwner() public {
+         address newTreasury = address(0x6666);
+         vm.prank(owner);
+         auction.setTreasury(newTreasury);
+         assertEq(auction.treasury(), newTreasury);
+     }
+}
+
+contract NounsAuctionHouseV2FeeTest is NounsAuctionHouseV2TestBase {
+    address bidder = makeAddr('bidder');
+    address treasury = address(0x5555);
+
+    function setUp() public override {
+        super.setUp();
+        bidAndWinCurrentAuction(bidder, 1 ether);
+        bidAndWinCurrentAuction(bidder, 1.2 ether);
+        
+        // Approve the auction contract to transfer NFTs on behalf of the bidder
+        vm.startPrank(bidder);
+        auction.nouns().setApprovalForAll(address(auction), true);
+        vm.stopPrank();
+
+        // Set the treasury address
+        vm.prank(owner);
+        auction.setTreasury(treasury);
+    }
+
+    function test_setFeePercentage_revertsForNonOwner() public {
+        vm.expectRevert('Ownable: caller is not the owner');
+        auction.setFeePercentage(5);
+    }
+
+    function test_setFeePercentage_worksForOwner() public {
+        vm.prank(owner);
+        auction.setFeePercentage(5);
+        assertEq(auction.feePercentage(), 5);
+    }
+
+    function test_feeDeductionAndTransfer() public {
+        uint256 tokenId = 1;
+        uint256 bidAmount = 2 ether;
+        uint8 feePercentage = 5;
+        uint256 expectedFee = (bidAmount * feePercentage) / 100;
+        uint256 expectedAmountAfterFee = bidAmount - expectedFee;
+
+        // Set the fee percentage
+        vm.prank(owner);
+        auction.setFeePercentage(feePercentage);
+
+        // Add NFT to auction queue
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId);
+
+        // End auction and create new one from queue
+        endAuctionAndSettle();
+
+        // First bidder places a bid
+        address firstBidder = makeAddr('firstBidder');
+        vm.deal(firstBidder, 1 ether);
+        vm.prank(firstBidder);
+        auction.createBid{ value: 1 ether }(tokenId);
+
+        // Second bidder places a higher bid
+        address secondBidder = makeAddr('secondBidder');
+        vm.deal(secondBidder, bidAmount);
+        vm.prank(secondBidder);
+        auction.createBid{ value: bidAmount }(tokenId);
+
+        // End auction and settle
+        endAuctionAndSettle();
+
+        // Check balances
+        assertEq(treasury.balance, expectedFee);
+        assertEq(bidder.balance, expectedAmountAfterFee);
+    }
+
+    function test_feeDeductionAndTransferForMintedNFT() public {
+        uint256 bidAmount = 2 ether;
+        uint8 feePercentage = 5;
+        uint256 expectedFee = (bidAmount * feePercentage) / 100;
+        uint256 expectedAmountAfterFee = bidAmount - expectedFee;
+
+        // Set the fee percentage
+        vm.prank(owner);
+        auction.setFeePercentage(feePercentage);
+
+        // Mint a new NFT and start an auction
+        endAuctionAndSettle(); // This will mint a new NFT and start an auction
+
+        uint256 nounId = auction.auction().nounId;
+
+        // First bidder places a bid
+        address firstBidder = makeAddr('firstBidder');
+        vm.deal(firstBidder, 1 ether);
+        vm.prank(firstBidder);
+        auction.createBid{ value: 1 ether }(nounId);
+
+        // Second bidder places a higher bid
+        address secondBidder = makeAddr('secondBidder');
+        vm.deal(secondBidder, bidAmount);
+        vm.prank(secondBidder);
+        auction.createBid{ value: bidAmount }(nounId);
+
+        // Get the current balance of the treasury
+        uint256 treasuryBalance = treasury.balance;
+
+        // End auction and settle
+        endAuctionAndSettle();
+
+        // Check balances
+        assertEq(treasury.balance, treasuryBalance + bidAmount);
+    }
+
+    function test_feeDeductionAndTransferForMultipleSales() public {
+        uint256 bidAmount1 = 2 ether;
+        uint256 bidAmount2 = 3 ether;
+        uint8 feePercentage = 5;
+        uint256 expectedFee1 = (bidAmount1 * feePercentage) / 100;
+        uint256 expectedFee2 = (bidAmount2 * feePercentage) / 100;
+        uint256 expectedAmountAfterFee1 = bidAmount1 - expectedFee1;
+        uint256 expectedAmountAfterFee2 = bidAmount2 - expectedFee2;
+
+        // Set the fee percentage
+        vm.prank(owner);
+        auction.setFeePercentage(feePercentage);
+
+        // Add first NFT to auction queue
+        uint256 tokenId1 = 1;
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId1);
+        endAuctionAndSettle();
+
+        // First bidder places a bid on the first NFT
+        address firstBidder = makeAddr('firstBidder');
+        vm.deal(firstBidder, 1 ether);
+        vm.prank(firstBidder);
+        auction.createBid{ value: 1 ether }(tokenId1);
+
+        // Second bidder places a higher bid on the first NFT
+        address secondBidder = makeAddr('secondBidder');
+        vm.deal(secondBidder, bidAmount1);
+        vm.prank(secondBidder);
+        auction.createBid{ value: bidAmount1 }(tokenId1);
+
+        // Add second NFT to auction queue
+        uint256 tokenId2 = 2;
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId2);
+
+        // End auction and settle the first NFT
+        endAuctionAndSettle();
+
+        // Check balances after first sale
+        assertEq(treasury.balance, expectedFee1);
+        assertEq(bidder.balance, expectedAmountAfterFee1);
+
+        // First bidder places a bid on the second NFT
+        vm.deal(firstBidder, 1 ether);
+        vm.prank(firstBidder);
+        auction.createBid{ value: 1 ether }(tokenId2);
+
+        // Second bidder places a higher bid on the second NFT
+        vm.deal(secondBidder, bidAmount2);
+        vm.prank(secondBidder);
+        auction.createBid{ value: bidAmount2 }(tokenId2);
+
+        // End auction and settle the second NFT
+        endAuctionAndSettle();
+
+        // Check balances after second sale
+        assertEq(treasury.balance, expectedFee1 + expectedFee2);
+        assertEq(bidder.balance, expectedAmountAfterFee1 + expectedAmountAfterFee2);
     }
 }

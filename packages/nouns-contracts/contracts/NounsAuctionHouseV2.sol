@@ -2,19 +2,6 @@
 
 /// @title The Nouns DAO auction house
 
-/*********************************
- * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
- * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
- * ░░░░░░█████████░░█████████░░░ *
- * ░░░░░░██░░░████░░██░░░████░░░ *
- * ░░██████░░░████████░░░████░░░ *
- * ░░██░░██░░░████░░██░░░████░░░ *
- * ░░██░░██░░░████░░██░░░████░░░ *
- * ░░░░░░█████████░░█████████░░░ *
- * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
- * ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ *
- *********************************/
-
 // LICENSE
 // NounsAuctionHouse.sol is a modified version of Zora's AuctionHouse.sol:
 // https://github.com/ourzora/auction-house/blob/54a12ec1a6cf562e49f0a4917990474b11350a2d/contracts/AuctionHouse.sol
@@ -31,6 +18,8 @@ import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import { INounsAuctionHouseV2 } from './interfaces/INounsAuctionHouseV2.sol';
 import { INounsToken } from './interfaces/INounsToken.sol';
 import { IWETH } from './interfaces/IWETH.sol';
+import { IEntropy } from '@pythnetwork/entropy-sdk-solidity/IEntropy.sol';
+import { IEntropyConsumer } from '@pythnetwork/entropy-sdk-solidity/IEntropyConsumer.sol';
 
 /**
  * @dev The contract inherits from PausableUpgradeable & ReentrancyGuardUpgradeable most of all the keep the same
@@ -40,7 +29,8 @@ contract NounsAuctionHouseV2 is
     INounsAuctionHouseV2,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable,
-    OwnableUpgradeable
+    OwnableUpgradeable,
+    IEntropyConsumer
 {
     /// @notice A hard-coded cap on time buffer to prevent accidental auction disabling if set with a very high value.
     uint56 public constant MAX_TIME_BUFFER = 1 days;
@@ -69,10 +59,44 @@ contract NounsAuctionHouseV2 is
     /// @notice The Nouns price feed state
     mapping(uint256 => SettlementState) settlementHistory;
 
-    constructor(INounsToken _nouns, address _weth, uint256 _duration) initializer {
+     /// @notice Queue of NFTs to be auctioned from members wanting to sell
+    uint256[] public auctionQueue;
+
+    /// @notice Mapping to track the owner of each NFT in the queue
+    mapping(uint256 => address) public nftOwners;
+
+    /// @notice The address of the DAO treasury
+    address public treasury;
+
+    /// @notice The fee percentage taken from each sale
+    uint8 public feePercentage;
+
+    /// @notice The Pyth Entropy contract
+    IEntropy public entropy;
+
+    /// @notice The address of the entropy provider
+    address public provider;
+
+    /// @notice Emitted when a random number is requested
+    event RandomNumberRequested(uint64 sequenceNumber);
+
+    /// @notice Emitted when a random number is received
+    event RandomNumberReceived(uint64 sequenceNumber, bytes32 randomNumber);
+
+    /**
+     * @notice Constructor to initialize the contract with required parameters
+     * @param _nouns The Nouns ERC721 token contract
+     * @param _weth The address of the WETH contract
+     * @param _duration The duration of a single auction
+     * @param _entropy The address of the Pyth Entropy contract
+     * @param _provider The address of the entropy provider
+     */
+    constructor(INounsToken _nouns, address _weth, uint256 _duration, address _entropy, address _provider) initializer {
         nouns = _nouns;
         weth = _weth;
         duration = _duration;
+        entropy = IEntropy(_entropy);
+        provider = _provider;
     }
 
     /**
@@ -94,6 +118,8 @@ contract NounsAuctionHouseV2 is
         reservePrice = _reservePrice;
         timeBuffer = _timeBuffer;
         minBidIncrementPercentage = _minBidIncrementPercentage;
+        treasury = owner(); // By default, the treasury is the owner
+        feePercentage = 0;
     }
 
     /**
@@ -110,6 +136,49 @@ contract NounsAuctionHouseV2 is
      */
     function settleAuction() external override whenPaused {
         _settleAuction();
+    }
+
+    /**
+     * @notice Add an NFT to the auction queue.
+     * @param tokenId The ID of the NFT to add to the queue.
+     */
+    function addToAuctionQueue(uint256 tokenId) external payable{
+        require(nouns.ownerOf(tokenId) == msg.sender, "Not the owner of the NFT");
+        auctionQueue.push(tokenId);
+        nftOwners[tokenId] = msg.sender;
+
+        // Add burning of Station X governance tokens from users wallet here
+
+        nouns.transferFrom(msg.sender, address(this), tokenId);
+    }
+
+    /**
+     * @notice Remove an NFT from the auction queue.
+     * @param tokenId The ID of the NFT to remove from the queue.
+     */
+    function removeFromAuctionQueue(uint256 tokenId) external {
+        require(nftOwners[tokenId] == msg.sender, "Not the owner of the NFT");
+
+        // Find the index of the tokenId in the queue
+        uint256 index;
+        bool found = false;
+        for (uint256 i = 0; i < auctionQueue.length; i++) {
+            if (auctionQueue[i] == tokenId) {
+                index = i;
+                found = true;
+                break;
+            }
+        }
+        require(found, "NFT not found in the queue");
+
+        // Remove the NFT from the queue
+        auctionQueue[index] = auctionQueue[auctionQueue.length - 1];
+        auctionQueue.pop();
+
+        // Remove the owner mapping
+        delete nftOwners[tokenId];
+
+        nouns.transferFrom(address(this), msg.sender, tokenId);
     }
 
     /**
@@ -217,10 +286,38 @@ contract NounsAuctionHouseV2 is
     }
 
     /**
+     * @notice Set the DAO treasury address.
+     * @dev Only callable by the owner.
+     */
+    function setTreasury(address _treasury) external onlyOwner {
+        treasury = _treasury;
+    }
+
+    /**
+    * @notice Set the fee percentage taken from each sale.
+    * @dev Only callable by the owner.
+    * @param _feePercentage The new fee percentage
+    */
+    function setFeePercentage(uint8 _feePercentage) external onlyOwner {
+        require(_feePercentage <= 100, "Fee percentage too high");
+        feePercentage = _feePercentage;
+        emit FeePercentageUpdated(_feePercentage);
+    }
+
+    /**
      * @notice Set the auction reserve price.
      * @dev Only callable by the owner.
      */
     function setReservePrice(uint192 _reservePrice) external override onlyOwner {
+        reservePrice = _reservePrice;
+
+        emit AuctionReservePriceUpdated(_reservePrice);
+    }
+
+    /**
+     * @notice Internally set the auction reserve price.
+     */
+    function _setReservePrice(uint192 _reservePrice) internal {
         reservePrice = _reservePrice;
 
         emit AuctionReservePriceUpdated(_reservePrice);
@@ -239,36 +336,82 @@ contract NounsAuctionHouseV2 is
     }
 
     /**
-     * @notice Create an auction.
-     * @dev Store the auction details in the `auction` state variable and emit an AuctionCreated event.
-     * If the mint reverts, the minter was updated without pausing this contract first. To remedy this,
-     * catch the revert and pause this contract.
+     * @notice Request a random number from the Pyth Entropy contract
+     */
+    function requestRandomNumber() internal {
+        bytes32 userRandomNumber = keccak256(abi.encodePacked(block.timestamp, msg.sender));
+        uint128 requestFee = entropy.getFee(provider);
+        uint64 sequenceNumber = entropy.requestWithCallback{ value: requestFee }(provider, userRandomNumber);
+        emit RandomNumberRequested(sequenceNumber);
+    }
+
+    /**
+     * @notice Callback function to handle the random number response from the Pyth Entropy contract
+     * @param sequenceNumber The sequence number of the request
+     * @param _providerAddress The address of the entropy provider
+     * @param randomNumber The random number received
+     */
+    function entropyCallback(
+        uint64 sequenceNumber,
+        address _providerAddress,
+        bytes32 randomNumber
+    ) internal override {
+        emit RandomNumberReceived(sequenceNumber, randomNumber);
+        _createAuctionWithRandomNumber(randomNumber);
+    }
+
+    /**
+     * @notice Create a new auction, requesting a random number if the auction queue is not empty
      */
     function _createAuction() internal {
-        try nouns.mint() returns (uint256 nounId) {
-            uint40 startTime = uint40(block.timestamp);
-            uint40 endTime = startTime + uint40(duration);
-
-            auctionStorage = AuctionV2({
-                nounId: uint96(nounId),
-                clientId: 0,
-                amount: 0,
-                startTime: startTime,
-                endTime: endTime,
-                bidder: payable(0),
-                settled: false
-            });
-
-            emit AuctionCreated(nounId, startTime, endTime);
-        } catch Error(string memory) {
-            _pause();
+        if (auctionQueue.length > 0) {
+            requestRandomNumber();
+        } else {
+            _createAuctionWithRandomNumber(0);
         }
     }
 
     /**
-     * @notice Settle an auction, finalizing the bid and paying out to the owner.
-     * @dev If there are no bids, the Noun is burned.
+     * @notice Create a new auction using the provided random number
+     * @param randomNumber The random number to use for selecting an ID from the auction queue
      */
+    function _createAuctionWithRandomNumber(bytes32 randomNumber) internal {
+        uint256 nounId;
+        if (auctionQueue.length > 0) {
+            uint256 randomIndex = uint256(randomNumber) % auctionQueue.length;
+            nounId = auctionQueue[randomIndex];
+            auctionQueue[randomIndex] = auctionQueue[auctionQueue.length - 1];
+            auctionQueue.pop();
+        } else {
+            try nouns.mint() returns (uint256 mintedNounId) {
+                nounId = mintedNounId;
+                nftOwners[nounId] = address(0);
+            } catch Error(string memory) {
+                _pause();
+                return;
+            }
+        }
+
+        uint40 startTime = uint40(block.timestamp);
+        uint40 endTime = startTime + uint40(duration);
+
+        auctionStorage = AuctionV2({
+            nounId: uint96(nounId),
+            clientId: 0,
+            amount: 0,
+            startTime: startTime,
+            endTime: endTime,
+            bidder: payable(0),
+            settled: false
+        });
+
+        emit AuctionCreated(nounId, startTime, endTime);
+    }
+
+    /**
+    * @notice Settle an auction, finalizing the bid and paying out to the owner.
+    * @dev If there are no bids, the Noun is burned. If the NFT came from the queue, a fee is taken and sent to the treasury.
+    */
     function _settleAuction() internal {
         INounsAuctionHouseV2.AuctionV2 memory _auction = auctionStorage;
 
@@ -278,14 +421,38 @@ contract NounsAuctionHouseV2 is
 
         auctionStorage.settled = true;
 
-        if (_auction.bidder == address(0)) {
-            nouns.burn(_auction.nounId);
-        } else {
-            nouns.transferFrom(address(this), _auction.bidder, _auction.nounId);
-        }
+        if (_auction.bidder == address(0)) { // If there are no bids
+            if (nftOwners[_auction.nounId] != address(0)) {
+                // NEED TO UPDATE to call the liquid backing treasury contract to transfer backing to owner
+                // then burn the NFT
 
-        if (_auction.amount > 0) {
-            _safeTransferETHWithFallback(owner(), _auction.amount);
+
+                // Re-add the NFT to the queue if it came from the queue
+                auctionQueue.push(_auction.nounId);
+            } else {
+                // Burn the NFT if it was minted
+                nouns.burn(_auction.nounId);
+            }
+        } else {
+            if (_auction.amount > 0) {
+                address payable recipient = nftOwners[_auction.nounId] != address(0) ? payable(nftOwners[_auction.nounId]) : payable(treasury);
+                
+                // Calculate the fee and the amount to send to the recipient
+                uint256 fee = (_auction.amount * feePercentage) / 100;
+                uint256 amountAfterFee = _auction.amount - fee;
+
+                // Clear the owner mapping before making the external call
+                delete nftOwners[_auction.nounId];
+
+                // Transfer the fee to the treasury
+                _safeTransferETHWithFallback(payable(treasury), fee);
+
+                // Transfer the remaining amount to the recipient
+                _safeTransferETHWithFallback(recipient, amountAfterFee);
+            }
+            nouns.transferFrom(address(this), _auction.bidder, _auction.nounId);
+
+            // Add in minting station X governance tokens to the winning bidder
         }
 
         SettlementState storage settlementState = settlementHistory[_auction.nounId];
@@ -551,5 +718,18 @@ contract NounsAuctionHouseV2 is
      */
     function uint64PriceToUint256(uint64 price) internal pure returns (uint256) {
         return uint256(price) * 1e8;
+    }
+
+    function getAuctionQueueLength() external view returns (uint256) {
+        return auctionQueue.length;
+    }
+
+    // This method is required by the IEntropyConsumer interface
+    function getEntropy() internal view override returns (address) {
+        return address(entropy);
+    }
+
+    function setEntropy(address _entropy) external onlyOwner {
+        entropy = IEntropy(_entropy);
     }
 }
