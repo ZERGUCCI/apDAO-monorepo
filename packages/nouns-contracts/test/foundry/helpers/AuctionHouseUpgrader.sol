@@ -21,7 +21,6 @@ library AuctionHouseUpgrader {
         NounsAuctionHouseV2 newLogic = new NounsAuctionHouseV2(
             auctionV1.nouns(),
             auctionV1.weth(),
-            auctionV1.duration(),
             0x26DD80569a8B23768A1d80869Ed7339e07595E85,
             0x6CC14824Ea2918f5De5C2f75A9Da968ad4BD6344
         );

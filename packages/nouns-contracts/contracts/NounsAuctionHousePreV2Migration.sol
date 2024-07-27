@@ -35,6 +35,7 @@ contract NounsAuctionHousePreV2Migration is PausableUpgradeable, ReentrancyGuard
     }
 
     struct NewLayout {
+        uint256 duration;
         uint192 reservePrice;
         uint56 timeBuffer;
         uint8 minBidIncrementPercentage;
@@ -67,6 +68,7 @@ contract NounsAuctionHousePreV2Migration is PausableUpgradeable, ReentrancyGuard
         oldLayout.auction = INounsAuctionHouse.Auction(0, 0, 0, 0, payable(0), false);
 
         // Populate the new layout from the cache
+        newLayout.duration = oldLayoutCache.duration;
         newLayout.reservePrice = uint192(oldLayoutCache.reservePrice);
         newLayout.timeBuffer = uint56(oldLayoutCache.timeBuffer);
         newLayout.minBidIncrementPercentage = oldLayoutCache.minBidIncrementPercentage;

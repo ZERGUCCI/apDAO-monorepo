@@ -90,14 +90,12 @@ contract NounsAuctionHouseV2 is
      * @notice Constructor to initialize the contract with required parameters
      * @param _nouns The Nouns ERC721 token contract
      * @param _weth The address of the WETH contract
-     * @param _duration The duration of a single auction
      * @param _entropy The address of the Pyth Entropy contract
      * @param _provider The address of the entropy provider
      */
-    constructor(INounsToken _nouns, address _weth, uint256 _duration, address _entropy, address _provider) initializer {
+    constructor(INounsToken _nouns, address _weth, address _entropy, address _provider) initializer {
         nouns = _nouns;
         weth = _weth;
-        duration = _duration;
         entropy = IEntropy(_entropy);
         provider = _provider;
     }
@@ -108,6 +106,7 @@ contract NounsAuctionHouseV2 is
      * @dev This function can only be called once.
      */
     function initialize(
+        uint256 _duration,
         uint192 _reservePrice,
         uint56 _timeBuffer,
         uint8 _minBidIncrementPercentage
@@ -118,6 +117,7 @@ contract NounsAuctionHouseV2 is
 
         _pause();
 
+        duration = _duration;
         reservePrice = _reservePrice;
         timeBuffer = _timeBuffer;
         minBidIncrementPercentage = _minBidIncrementPercentage;

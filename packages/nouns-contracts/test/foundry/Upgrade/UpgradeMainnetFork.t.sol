@@ -292,7 +292,7 @@ contract AuctionHouseUpgradeMainnetForkTest is UpgradeMainnetForkBaseTest {
 
         // Propose and execute the upgrade proposal
 
-        NounsAuctionHouseV2 newLogic = new NounsAuctionHouseV2(ahv1.nouns(), ahv1.weth(), ahv1.duration(), 0x26DD80569a8B23768A1d80869Ed7339e07595E85, 0x6CC14824Ea2918f5De5C2f75A9Da968ad4BD6344);
+        NounsAuctionHouseV2 newLogic = new NounsAuctionHouseV2(ahv1.nouns(), ahv1.weth(), 0x26DD80569a8B23768A1d80869Ed7339e07595E85, 0x6CC14824Ea2918f5De5C2f75A9Da968ad4BD6344);
         NounsAuctionHousePreV2Migration migratorLogic = new NounsAuctionHousePreV2Migration();
 
         uint256 txCount = 3;
