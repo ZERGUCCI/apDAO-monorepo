@@ -42,7 +42,7 @@ contract NounsAuctionHouseV2 is
     address public immutable weth;
 
     /// @notice The duration of a single auction
-    uint256 public immutable duration;
+    uint256 public duration;
 
     /// @notice The minimum price accepted in an auction
     uint192 public reservePrice;
