@@ -83,6 +83,9 @@ contract NounsAuctionHouseV2 is
     /// @notice Emitted when a random number is received
     event RandomNumberReceived(uint64 sequenceNumber, bytes32 randomNumber);
 
+    // @notice Emitted when auction duration is updated
+    event AuctionDurationUpdated(uint256 duration);
+
     /**
      * @notice Constructor to initialize the contract with required parameters
      * @param _nouns The Nouns ERC721 token contract
@@ -293,6 +296,17 @@ contract NounsAuctionHouseV2 is
         treasury = _treasury;
     }
 
+    // /**
+    // * @notice Set the auction duration.
+    // * @dev Only callable by the owner.
+    // * @param _duration The new duration for the auction
+    // */
+    // function setDuration(uint256 _duration) external onlyOwner {
+    //     require(_duration > 0, "Duration must be greater than zero");
+    //     duration = _duration;
+    //     emit AuctionDurationUpdated(_duration);
+    // }
+
     /**
     * @notice Set the fee percentage taken from each sale.
     * @dev Only callable by the owner.
@@ -408,7 +422,7 @@ contract NounsAuctionHouseV2 is
         emit AuctionCreated(nounId, startTime, endTime);
     }
 
-    /**
+    /** 
     * @notice Settle an auction, finalizing the bid and paying out to the owner.
     * @dev If there are no bids, the Noun is burned. If the NFT came from the queue, a fee is taken and sent to the treasury.
     */
