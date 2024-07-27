@@ -84,6 +84,10 @@ contract MockEntropy is IEntropy {
 
     function withdrawAsFeeManager(address, uint128) external pure override {}
 
+    function setRandomNumber(bytes32 _randomNumber) external{
+        randomNumber = _randomNumber;
+    }
+
     function constructUserCommitment(bytes32 userRandomness) external pure override returns (bytes32) {
         return keccak256(abi.encodePacked(userRandomness));
     }

@@ -1324,3 +1324,111 @@ contract NounsAuctionHouseV2FeeTest is NounsAuctionHouseV2TestBase {
         assertEq(bidder.balance, expectedAmountAfterFee1 + expectedAmountAfterFee2);
     }
 }
+
+contract NounsAuctionHouseV2EntropyTest is NounsAuctionHouseV2TestBase {
+    address bidder = makeAddr('bidder');
+    address bidder2 = makeAddr('bidder2');
+
+    /// @notice Emitted when a random number is received
+    event RandomNumberReceived(uint64 sequenceNumber, bytes32 randomNumber);
+
+    /// @notice Emitted when a random number is requested
+    event RandomNumberRequested(uint64 sequenceNumber);
+
+    function setUp() public override {
+        super.setUp();
+
+        // Win NFTs from the auction for the bidder
+        bidAndWinCurrentAuction(bidder, 1 ether);
+        bidAndWinCurrentAuction(bidder, 1.2 ether);
+        bidAndWinCurrentAuction(bidder, 1.3 ether);
+        bidAndWinCurrentAuction(bidder, 1.4 ether);
+
+
+        // Approve the auction contract to transfer NFTs on behalf of the bidder
+        vm.startPrank(bidder);
+        auction.nouns().setApprovalForAll(address(auction), true);
+        vm.stopPrank();
+
+        // Ensure the MockEntropy contract is set in the auction house
+        vm.prank(owner);
+        auction.setEntropy(address(mockEntropy));
+    }
+
+    function test_requestRandomNumber_calledWhenQueueNotEmpty() public {
+        uint256 tokenId1 = 1;
+        uint256 tokenId2 = 2;
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId1);
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId2);
+
+        // Ends auction and creates new one which SHOULD trigger a request for a random number
+        endAuctionAndSettle();
+
+        // Verify that the sequence number has incremented, indicating a request was made
+        assertEq(mockEntropy.sequenceNumber(), 1);
+    }
+
+    function test_requestRandomNumber_emitsEventWhenQueueNotEmpty() public {
+        uint256 tokenId1 = 1;
+        uint256 tokenId2 = 2;
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId1);
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId2);
+
+        vm.expectEmit();
+
+        // We emit the event we expect to see.
+        emit RandomNumberReceived(mockEntropy.sequenceNumber() + 1, mockEntropy.randomNumber());
+
+        // We perform the call.
+        endAuctionAndSettle();
+    }
+
+    // Function to test that the requestRandomNumber function is not called when the queue is empty
+    function test_requestRandomNumber_notCalledWhenQueueEmpty() public {
+        // Ends auction and creates new one which SHOULD NOT trigger a request for a random number
+        endAuctionAndSettle();
+
+        // Verify that the sequence number has not incremented, indicating a request was not made
+        assertEq(mockEntropy.sequenceNumber(), 0);
+    }
+
+    // Function to test random token selection only chooses from the queue
+    function test_randomTokenSelection_onlyChoosesFromQueue() public {
+        uint256 tokenId1 = 1;
+        uint256 tokenId2 = 2;
+        uint256 tokenId3 = 3;
+        uint256 tokenId4 = 4;
+
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId1);
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId2);
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId3);
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId4);
+
+        // Ends auction and creates new one
+        endAuctionAndSettle();
+
+        // Verify that the token ID selected is any of the tokens from the queue
+        uint256 selectedTokenId = auction.auction().nounId;
+        assert(selectedTokenId == tokenId1 || selectedTokenId == tokenId2 || selectedTokenId == tokenId3 || selectedTokenId == tokenId4);
+
+        // Set a new random number
+        bytes32 newRandomNumber = keccak256(abi.encodePacked(block.timestamp, block.difficulty));
+        mockEntropy.setRandomNumber(newRandomNumber);
+
+        // Ends auction and creates new one
+        endAuctionAndSettle();
+
+        // Verify that the token ID selected is any of the remaining tokens from the queue
+        uint256 newSelectedTokenId = auction.auction().nounId;
+        assert(newSelectedTokenId == tokenId1 || newSelectedTokenId == tokenId2 || newSelectedTokenId == tokenId3 || newSelectedTokenId == tokenId4);
+        assert(newSelectedTokenId != selectedTokenId);
+    }
+}
