@@ -589,85 +589,85 @@ contract NoracleTest_GapInHistoricPricesTest is NoracleBaseTest {
         auction.getPrices(2);
     }
 
-    // function test_getSettlements_skipTrue_skipsEmptyData() public {
-    //     IAH.Settlement[] memory settlements = auction.getSettlements(20, true);
+    function test_getSettlements_skipTrue_skipsEmptyData() public {
+        IAH.Settlement[] memory settlements = auction.getSettlements(20, true);
 
-    //     uint256 ts = block.timestamp;
-    //     expectedSettlements.push(
-    //         IAH.Settlement({ blockTimestamp: uint32(ts), amount: 6 ether, winner: bidder, nounId: 6, clientId: 0 })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({
-    //             blockTimestamp: uint32(ts - 24 hours),
-    //             amount: 2 ether,
-    //             winner: bidder,
-    //             nounId: 2,
-    //             clientId: 0
-    //         })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({
-    //             blockTimestamp: uint32(ts - 48 hours),
-    //             amount: 1 ether,
-    //             winner: bidder,
-    //             nounId: 1,
-    //             clientId: 0
-    //         })
-    //     );
-    //     assertEq(settlements, expectedSettlements);
+        uint256 ts = block.timestamp;
+        expectedSettlements.push(
+            IAH.Settlement({ blockTimestamp: uint32(ts), amount: 6 ether, winner: bidder, nounId: 6, clientId: 0 })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({
+                blockTimestamp: uint32(ts - 24 hours),
+                amount: 2 ether,
+                winner: bidder,
+                nounId: 2,
+                clientId: 0
+            })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({
+                blockTimestamp: uint32(ts - 48 hours),
+                amount: 1 ether,
+                winner: bidder,
+                nounId: 1,
+                clientId: 0
+            })
+        );
+        assertEq(settlements, expectedSettlements);
 
-    //     IAH.Settlement[] memory settlements2 = auction.getSettlements(0, 20, true);
-    //     assertEq(settlements2, reverse(expectedSettlements));
+        IAH.Settlement[] memory settlements2 = auction.getSettlements(0, 20, true);
+        assertEq(settlements2, reverse(expectedSettlements));
 
-    //     IAH.Settlement[] memory settlements3 = auction.getSettlementsFromIdtoTimestamp(0, block.timestamp, true);
-    //     assertEq(settlements3, reverse(expectedSettlements));
-    // }
+        IAH.Settlement[] memory settlements3 = auction.getSettlementsFromIdtoTimestamp(0, block.timestamp, true);
+        assertEq(settlements3, reverse(expectedSettlements));
+    }
 
-    // function test_getSettlements_skipFalse() public {
-    //     IAH.Settlement[] memory settlements = auction.getSettlements(20, false);
+    function test_getSettlements_skipFalse() public {
+        IAH.Settlement[] memory settlements = auction.getSettlements(20, false);
 
-    //     uint256 ts = block.timestamp;
-    //     expectedSettlements.push(
-    //         IAH.Settlement({ blockTimestamp: uint32(ts), amount: 6 ether, winner: bidder, nounId: 6, clientId: 0 })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({ blockTimestamp: 0, amount: 0, winner: address(0), nounId: 5, clientId: 0 })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({ blockTimestamp: 0, amount: 0, winner: address(0), nounId: 4, clientId: 0 })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({ blockTimestamp: 0, amount: 0, winner: address(0), nounId: 3, clientId: 0 })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({
-    //             blockTimestamp: uint32(ts - 24 hours),
-    //             amount: 2 ether,
-    //             winner: bidder,
-    //             nounId: 2,
-    //             clientId: 0
-    //         })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({
-    //             blockTimestamp: uint32(ts - 48 hours),
-    //             amount: 1 ether,
-    //             winner: bidder,
-    //             nounId: 1,
-    //             clientId: 0
-    //         })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({ blockTimestamp: 0, amount: 0, winner: address(0), nounId: 0, clientId: 0 })
-    //     );
-    //     assertEq(settlements, expectedSettlements);
+        uint256 ts = block.timestamp;
+        expectedSettlements.push(
+            IAH.Settlement({ blockTimestamp: uint32(ts), amount: 6 ether, winner: bidder, nounId: 6, clientId: 0 })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({ blockTimestamp: 0, amount: 0, winner: address(0), nounId: 5, clientId: 0 })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({ blockTimestamp: 0, amount: 0, winner: address(0), nounId: 4, clientId: 0 })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({ blockTimestamp: 0, amount: 0, winner: address(0), nounId: 3, clientId: 0 })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({
+                blockTimestamp: uint32(ts - 24 hours),
+                amount: 2 ether,
+                winner: bidder,
+                nounId: 2,
+                clientId: 0
+            })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({
+                blockTimestamp: uint32(ts - 48 hours),
+                amount: 1 ether,
+                winner: bidder,
+                nounId: 1,
+                clientId: 0
+            })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({ blockTimestamp: 0, amount: 0, winner: address(0), nounId: 0, clientId: 0 })
+        );
+        assertEq(settlements, expectedSettlements);
 
-    //     IAH.Settlement[] memory settlements2 = auction.getSettlements(0, 7, false);
-    //     assertEq(settlements2, reverse(expectedSettlements));
+        IAH.Settlement[] memory settlements2 = auction.getSettlements(0, 7, false);
+        assertEq(settlements2, reverse(expectedSettlements));
 
-    //     IAH.Settlement[] memory settlements3 = auction.getSettlementsFromIdtoTimestamp(0, block.timestamp, false);
-    //     assertEq(settlements3, reverse(expectedSettlements));
-    // }
+        IAH.Settlement[] memory settlements3 = auction.getSettlementsFromIdtoTimestamp(0, block.timestamp, false);
+        assertEq(settlements3, reverse(expectedSettlements));
+    }
 }
 
 contract NoracleTest_GapInHistoricPrices_AfterWarmUp_Test is NoracleBaseTest {
@@ -697,87 +697,87 @@ contract NoracleTest_GapInHistoricPrices_AfterWarmUp_Test is NoracleBaseTest {
         auction.getPrices(2);
     }
 
-    // function test_getSettlements_skipTrue_skipsEmptyData() public {
-    //     IAH.Settlement[] memory settlements = auction.getSettlements(20, true);
+    function test_getSettlements_skipTrue_skipsEmptyData() public {
+        IAH.Settlement[] memory settlements = auction.getSettlements(20, true);
 
-    //     uint256 ts = block.timestamp;
-    //     expectedSettlements.push(
-    //         IAH.Settlement({ blockTimestamp: uint32(ts), amount: 6 ether, winner: bidder, nounId: 6, clientId: 0 })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({
-    //             blockTimestamp: uint32(ts - 24 hours),
-    //             amount: 2 ether,
-    //             winner: bidder,
-    //             nounId: 2,
-    //             clientId: 0
-    //         })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({
-    //             blockTimestamp: uint32(ts - 48 hours),
-    //             amount: 1 ether,
-    //             winner: bidder,
-    //             nounId: 1,
-    //             clientId: 0
-    //         })
-    //     );
-    //     assertEq(settlements, expectedSettlements);
+        uint256 ts = block.timestamp;
+        expectedSettlements.push(
+            IAH.Settlement({ blockTimestamp: uint32(ts), amount: 6 ether, winner: bidder, nounId: 6, clientId: 0 })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({
+                blockTimestamp: uint32(ts - 24 hours),
+                amount: 2 ether,
+                winner: bidder,
+                nounId: 2,
+                clientId: 0
+            })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({
+                blockTimestamp: uint32(ts - 48 hours),
+                amount: 1 ether,
+                winner: bidder,
+                nounId: 1,
+                clientId: 0
+            })
+        );
+        assertEq(settlements, expectedSettlements);
 
-    //     IAH.Settlement[] memory settlements2 = auction.getSettlements(0, 20, true);
-    //     assertEq(settlements2, reverse(expectedSettlements));
+        IAH.Settlement[] memory settlements2 = auction.getSettlements(0, 20, true);
+        assertEq(settlements2, reverse(expectedSettlements));
 
-    //     IAH.Settlement[] memory settlements3 = auction.getSettlementsFromIdtoTimestamp(0, block.timestamp, true);
-    //     assertEq(settlements3, reverse(expectedSettlements));
-    // }
+        IAH.Settlement[] memory settlements3 = auction.getSettlementsFromIdtoTimestamp(0, block.timestamp, true);
+        assertEq(settlements3, reverse(expectedSettlements));
+    }
 
-    // function test_getSettlements_skipFalse() public {
-    //     IAH.Settlement[] memory settlements = auction.getSettlements(20, false);
+    function test_getSettlements_skipFalse() public {
+        IAH.Settlement[] memory settlements = auction.getSettlements(20, false);
 
-    //     uint256 ts = block.timestamp;
-    //     expectedSettlements.push(
-    //         IAH.Settlement({ blockTimestamp: uint32(ts), amount: 6 ether, winner: bidder, nounId: 6, clientId: 0 })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({ blockTimestamp: 1, amount: 0, winner: address(0), nounId: 5, clientId: 0 })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({ blockTimestamp: 1, amount: 0, winner: address(0), nounId: 4, clientId: 0 })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({ blockTimestamp: 1, amount: 0, winner: address(0), nounId: 3, clientId: 0 })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({
-    //             blockTimestamp: uint32(ts - 24 hours),
-    //             amount: 2 ether,
-    //             winner: bidder,
-    //             nounId: 2,
-    //             clientId: 0
-    //         })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({
-    //             blockTimestamp: uint32(ts - 48 hours),
-    //             amount: 1 ether,
-    //             winner: bidder,
-    //             nounId: 1,
-    //             clientId: 0
-    //         })
-    //     );
+        uint256 ts = block.timestamp;
+        expectedSettlements.push(
+            IAH.Settlement({ blockTimestamp: uint32(ts), amount: 6 ether, winner: bidder, nounId: 6, clientId: 0 })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({ blockTimestamp: 1, amount: 0, winner: address(0), nounId: 5, clientId: 0 })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({ blockTimestamp: 1, amount: 0, winner: address(0), nounId: 4, clientId: 0 })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({ blockTimestamp: 1, amount: 0, winner: address(0), nounId: 3, clientId: 0 })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({
+                blockTimestamp: uint32(ts - 24 hours),
+                amount: 2 ether,
+                winner: bidder,
+                nounId: 2,
+                clientId: 0
+            })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({
+                blockTimestamp: uint32(ts - 48 hours),
+                amount: 1 ether,
+                winner: bidder,
+                nounId: 1,
+                clientId: 0
+            })
+        );
 
-    //     // timestamp remains 0 here because it's a Nounder reward ID that does not get warmed up.
-    //     expectedSettlements.push(
-    //         IAH.Settlement({ blockTimestamp: 0, amount: 0, winner: address(0), nounId: 0, clientId: 0 })
-    //     );
-    //     assertEq(settlements, expectedSettlements);
+        // timestamp remains 0 here because it's a Nounder reward ID that does not get warmed up.
+        expectedSettlements.push(
+            IAH.Settlement({ blockTimestamp: 0, amount: 0, winner: address(0), nounId: 0, clientId: 0 })
+        );
+        assertEq(settlements, expectedSettlements);
 
-    //     IAH.Settlement[] memory settlements2 = auction.getSettlements(0, 7, false);
-    //     assertEq(settlements2, reverse(expectedSettlements));
+        IAH.Settlement[] memory settlements2 = auction.getSettlements(0, 7, false);
+        assertEq(settlements2, reverse(expectedSettlements));
 
-    //     IAH.Settlement[] memory settlements3 = auction.getSettlementsFromIdtoTimestamp(0, block.timestamp, false);
-    //     assertEq(settlements3, reverse(expectedSettlements));
-    // }
+        IAH.Settlement[] memory settlements3 = auction.getSettlementsFromIdtoTimestamp(0, block.timestamp, false);
+        assertEq(settlements3, reverse(expectedSettlements));
+    }
 }
 
 contract NoracleTest_AuctionWithNoBids is NoracleBaseTest {
@@ -832,39 +832,39 @@ contract NoracleTest_AuctionWithNoBids is NoracleBaseTest {
         assertEq(settlements3, reverse(expectedSettlements));
     }
 
-    // function test_getSettlements_skipTrue_includesAuctionsWithNoBids() public {
-    //     IAH.Settlement[] memory settlements = auction.getSettlements(20, true);
+    function test_getSettlements_skipTrue_includesAuctionsWithNoBids() public {
+        IAH.Settlement[] memory settlements = auction.getSettlements(20, true);
 
-    //     uint256 ts = block.timestamp;
-    //     expectedSettlements.push(
-    //         IAH.Settlement({ blockTimestamp: uint32(ts), amount: 3 ether, winner: bidder, nounId: 3, clientId: 0 })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({
-    //             blockTimestamp: uint32(ts - 24 hours),
-    //             amount: 0,
-    //             winner: address(0),
-    //             nounId: 2,
-    //             clientId: 0
-    //         })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({
-    //             blockTimestamp: uint32(ts - 48 hours),
-    //             amount: 1 ether,
-    //             winner: bidder,
-    //             nounId: 1,
-    //             clientId: 0
-    //         })
-    //     );
-    //     assertEq(settlements, expectedSettlements);
+        uint256 ts = block.timestamp;
+        expectedSettlements.push(
+            IAH.Settlement({ blockTimestamp: uint32(ts), amount: 3 ether, winner: bidder, nounId: 3, clientId: 0 })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({
+                blockTimestamp: uint32(ts - 24 hours),
+                amount: 0,
+                winner: address(0),
+                nounId: 2,
+                clientId: 0
+            })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({
+                blockTimestamp: uint32(ts - 48 hours),
+                amount: 1 ether,
+                winner: bidder,
+                nounId: 1,
+                clientId: 0
+            })
+        );
+        assertEq(settlements, expectedSettlements);
 
-    //     IAH.Settlement[] memory settlements2 = auction.getSettlements(0, 20, true);
-    //     assertEq(settlements2, reverse(expectedSettlements));
+        IAH.Settlement[] memory settlements2 = auction.getSettlements(0, 20, true);
+        assertEq(settlements2, reverse(expectedSettlements));
 
-    //     IAH.Settlement[] memory settlements3 = auction.getSettlementsFromIdtoTimestamp(0, block.timestamp, true);
-    //     assertEq(settlements3, reverse(expectedSettlements));
-    // }
+        IAH.Settlement[] memory settlements3 = auction.getSettlementsFromIdtoTimestamp(0, block.timestamp, true);
+        assertEq(settlements3, reverse(expectedSettlements));
+    }
 }
 
 contract NoracleTest_NoActiveAuction is NoracleBaseTest {
@@ -885,36 +885,36 @@ contract NoracleTest_NoActiveAuction is NoracleBaseTest {
         assertEq(prices, expectedPrices);
     }
 
-    // function test_getSettlements_includesLastNoun() public {
-    //     IAH.Settlement[] memory settlements = auction.getSettlements(20, true);
+    function test_getSettlements_includesLastNoun() public {
+        IAH.Settlement[] memory settlements = auction.getSettlements(20, true);
 
-    //     uint256 ts = block.timestamp;
-    //     expectedSettlements.push(
-    //         IAH.Settlement({
-    //             blockTimestamp: uint32(ts),
-    //             amount: 2 ether,
-    //             winner: makeAddr('bidder 2'),
-    //             nounId: 2,
-    //             clientId: 0
-    //         })
-    //     );
-    //     expectedSettlements.push(
-    //         IAH.Settlement({
-    //             blockTimestamp: uint32(ts - 24 hours),
-    //             amount: 1 ether,
-    //             winner: makeAddr('bidder'),
-    //             nounId: 1,
-    //             clientId: 0
-    //         })
-    //     );
-    //     assertEq(settlements, expectedSettlements);
+        uint256 ts = block.timestamp;
+        expectedSettlements.push(
+            IAH.Settlement({
+                blockTimestamp: uint32(ts),
+                amount: 2 ether,
+                winner: makeAddr('bidder 2'),
+                nounId: 2,
+                clientId: 0
+            })
+        );
+        expectedSettlements.push(
+            IAH.Settlement({
+                blockTimestamp: uint32(ts - 24 hours),
+                amount: 1 ether,
+                winner: makeAddr('bidder'),
+                nounId: 1,
+                clientId: 0
+            })
+        );
+        assertEq(settlements, expectedSettlements);
 
-    //     IAH.Settlement[] memory settlements2 = auction.getSettlements(0, 20, true);
-    //     assertEq(settlements2, reverse(expectedSettlements));
+        IAH.Settlement[] memory settlements2 = auction.getSettlements(0, 20, true);
+        assertEq(settlements2, reverse(expectedSettlements));
 
-    //     IAH.Settlement[] memory settlements3 = auction.getSettlementsFromIdtoTimestamp(0, block.timestamp, true);
-    //     assertEq(settlements3, reverse(expectedSettlements));
-    // }
+        IAH.Settlement[] memory settlements3 = auction.getSettlementsFromIdtoTimestamp(0, block.timestamp, true);
+        assertEq(settlements3, reverse(expectedSettlements));
+    }
 }
 
 contract NounsAuctionHouseV2_setPricesTest is NoracleBaseTest {
@@ -979,14 +979,63 @@ contract NounsAuctionHouseV2_OwnerFunctionsTest is NounsAuctionHouseV2TestBase {
         auction.setTimeBuffer(1 days + 1);
     }
 
-    // function test_setTimeBuffer_worksForOwner() public {
-    //     assertEq(auction.timeBuffer(), 5 minutes);
+    function test_setTimeBuffer_worksForOwner() public {
+        assertEq(auction.timeBuffer(), 5 minutes);
 
-    //     vm.prank(auction.owner());
-    //     auction.setTimeBuffer(1 days);
+        vm.prank(auction.owner());
+        auction.setTimeBuffer(1 days);
 
-    //     assertEq(auction.timeBuffer(), 1 days);
-    // }
+        assertEq(auction.timeBuffer(), 1 days);
+    }
+
+    function test_setAuctionDuration_revertsForNonOwner() public {
+        vm.expectRevert('Ownable: caller is not the owner');
+        auction.setAuctionDuration(12 hours);
+    }
+
+    function test_setAuctionDuration_revertsForZeroDuration() public {
+        vm.prank(owner);
+        vm.expectRevert('Duration must be greater than zero');
+        auction.setAuctionDuration(0);
+    }
+
+    function test_setAuctionDuration_worksForOwner() public {
+        uint256 initialDuration = auction.duration();
+        uint256 newDuration = 12 hours;
+
+        // Ensure initial duration is 24 hours
+        assertEq(initialDuration, 24 hours);
+
+        // Change duration to 12 hours
+        vm.prank(owner);
+        auction.setAuctionDuration(newDuration);
+
+        // Verify the duration has been updated
+        assertEq(auction.duration(), newDuration);
+    }
+
+    function test_auctionDurationChange_effectiveAfterCurrentAuction() public {
+        // Start the first auction
+        uint40 startTime1 = auction.auction().startTime;
+        uint40 endTime1 = auction.auction().endTime;
+
+        // Ensure initial duration is 24 hours
+        assertEq(endTime1, startTime1 + 24 hours);
+
+        // Change duration to 12 hours during the first auction
+        vm.prank(owner);
+        auction.setAuctionDuration(12 hours);
+
+        // End the first auction
+        endAuctionAndSettle();
+
+        // Start the second auction
+        uint40 startTime2 = auction.auction().startTime;
+        uint40 endTime2 = auction.auction().endTime;
+
+        // Ensure the second auction ends after 12 hours
+        assertEq(endTime2, startTime2 + 12 hours);
+    }
 }
 
 contract NounsAuctionHouseV2QueueTest is NounsAuctionHouseV2TestBase {

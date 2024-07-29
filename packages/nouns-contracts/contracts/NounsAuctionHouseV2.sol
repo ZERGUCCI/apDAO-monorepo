@@ -296,16 +296,15 @@ contract NounsAuctionHouseV2 is
         treasury = _treasury;
     }
 
-    // /**
-    // * @notice Set the auction duration.
-    // * @dev Only callable by the owner.
-    // * @param _duration The new duration for the auction
-    // */
-    // function setDuration(uint256 _duration) external onlyOwner {
-    //     require(_duration > 0, "Duration must be greater than zero");
-    //     duration = _duration;
-    //     emit AuctionDurationUpdated(_duration);
-    // }
+    /**
+     * @notice Set new auction duration.
+     * @dev Only callable by the owner.
+     */
+    function setAuctionDuration(uint256 _duration) external onlyOwner {
+        require(_duration > 0, 'Duration must be greater than zero');
+        duration = _duration;
+        emit AuctionDurationUpdated(_duration);
+    }
 
     /**
     * @notice Set the fee percentage taken from each sale.
