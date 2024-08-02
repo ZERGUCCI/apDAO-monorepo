@@ -532,14 +532,6 @@ contract NoracleTestManyAuctionsSettledStateTest is NoracleBaseTest {
         assertEq(settlements[19].amount, 1 ether);
     }
 
-    function test_getPrices_skipsNounderNouns() public {
-        uint256[] memory prices = auction.getPrices(20);
-        // prettier-ignore
-        expectedPrices = [20e18, 19e18, 18e18, 17e18, 16e18, 15e18, 14e18, 13e18, 12e18, 11e18,
-                          10e18, 9e18, 8e18, 7e18, 6e18, 5e18, 4e18, 3e18, 2e18, 1e18];
-        assertEq(prices, expectedPrices);
-    }
-
     function test_getSettlementRange_limitsToRange() public {
         IAH.Settlement[] memory settlements = auction.getSettlements(3, 8, true);
         assertEq(settlements.length, 5);
@@ -728,54 +720,6 @@ contract NoracleTest_GapInHistoricPrices_AfterWarmUp_Test is NoracleBaseTest {
         assertEq(settlements2, reverse(expectedSettlements));
 
         IAH.Settlement[] memory settlements3 = auction.getSettlementsFromIdtoTimestamp(0, block.timestamp, true);
-        assertEq(settlements3, reverse(expectedSettlements));
-    }
-
-    function test_getSettlements_skipFalse() public {
-        IAH.Settlement[] memory settlements = auction.getSettlements(20, false);
-
-        uint256 ts = block.timestamp;
-        expectedSettlements.push(
-            IAH.Settlement({ blockTimestamp: uint32(ts), amount: 6 ether, winner: bidder, nounId: 6, clientId: 0 })
-        );
-        expectedSettlements.push(
-            IAH.Settlement({ blockTimestamp: 1, amount: 0, winner: address(0), nounId: 5, clientId: 0 })
-        );
-        expectedSettlements.push(
-            IAH.Settlement({ blockTimestamp: 1, amount: 0, winner: address(0), nounId: 4, clientId: 0 })
-        );
-        expectedSettlements.push(
-            IAH.Settlement({ blockTimestamp: 1, amount: 0, winner: address(0), nounId: 3, clientId: 0 })
-        );
-        expectedSettlements.push(
-            IAH.Settlement({
-                blockTimestamp: uint32(ts - 24 hours),
-                amount: 2 ether,
-                winner: bidder,
-                nounId: 2,
-                clientId: 0
-            })
-        );
-        expectedSettlements.push(
-            IAH.Settlement({
-                blockTimestamp: uint32(ts - 48 hours),
-                amount: 1 ether,
-                winner: bidder,
-                nounId: 1,
-                clientId: 0
-            })
-        );
-
-        // timestamp remains 0 here because it's a Nounder reward ID that does not get warmed up.
-        expectedSettlements.push(
-            IAH.Settlement({ blockTimestamp: 0, amount: 0, winner: address(0), nounId: 0, clientId: 0 })
-        );
-        assertEq(settlements, expectedSettlements);
-
-        IAH.Settlement[] memory settlements2 = auction.getSettlements(0, 7, false);
-        assertEq(settlements2, reverse(expectedSettlements));
-
-        IAH.Settlement[] memory settlements3 = auction.getSettlementsFromIdtoTimestamp(0, block.timestamp, false);
         assertEq(settlements3, reverse(expectedSettlements));
     }
 }
@@ -1178,6 +1122,28 @@ contract NounsAuctionHouseV2QueueTest is NounsAuctionHouseV2TestBase {
         // End auction with no bids AGAIN then check if it's re-added to the queue
         assertEq(auction.auctionQueue(0), tokenId);
         assertEq(auction.nftOwners(tokenId), bidder);
+    }
+
+    function test_removeFromAuctionQueue_revertsWhenNounIsUpForAuction() public {
+        uint256 tokenId = 1;
+        
+        // Add the Noun to the auction queue
+        vm.prank(bidder);
+        auction.addToAuctionQueue(tokenId);
+        
+        // End the current auction and start a new one with the queued Noun
+        endAuctionAndSettle();
+        
+        // Verify that the new auction is for the queued Noun
+        assertEq(auction.auction().nounId, tokenId);
+        
+        // Attempt to remove the Noun from the queue while it's up for auction
+        vm.prank(bidder);
+        vm.expectRevert("NFT not found in the queue");
+        auction.removeFromAuctionQueue(tokenId);
+        
+        // Verify that the Noun is still up for auction
+        assertEq(auction.auction().nounId, tokenId);
     }
 }
 

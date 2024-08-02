@@ -520,14 +520,11 @@ contract NounsAuctionHouseV2 is
      * @dev Helps lower the gas cost of auction settlement when storing settlement data
      * thanks to the state slot being non-zero.
      * @dev Only writes to slots where blockTimestamp is zero, meaning it will not overwrite existing data.
-     * @dev Skips Nounder reward nouns.
      * @param startId the first Noun ID to warm up.
      * @param endId end Noun ID (up to, but not including).
      */
     function warmUpSettlementState(uint256 startId, uint256 endId) external {
         for (uint256 i = startId; i < endId; ++i) {
-            // Skipping Nounder rewards, no need to warm up those slots since they are never used.
-            if (i <= 1820 && i % 10 == 0) continue;
 
             SettlementState storage settlementState = settlementHistory[i];
             if (settlementState.blockTimestamp == 0) {
@@ -542,7 +539,7 @@ contract NounsAuctionHouseV2 is
      * @dev Returns up to `auctionCount` settlements in reverse order, meaning settlements[0] will be the most recent auction price.
      * Includes auctions with no bids (blockTimestamp will be > 1)
      * @param auctionCount The number of price observations to get.
-     * @param skipEmptyValues if true, skips nounder reward ids and ids with missing data
+     * @param skipEmptyValues if true, skips ids with missing data
      * @return settlements An array of type `Settlement`, where each Settlement includes a timestamp,
      * the Noun ID of that auction, the winning bid amount, and the winner's address.
      */
@@ -591,7 +588,6 @@ contract NounsAuctionHouseV2 is
      * @notice Get past auction prices.
      * @dev Returns prices in reverse order, meaning prices[0] will be the most recent auction price.
      * Skips auctions where there was no winner, i.e. no bids.
-     * Skips nounder rewards noun ids.
      * Reverts if getting a empty data for an auction that happened, e.g. historic data not filled
      * Reverts if there's not enough auction data, i.e. reached noun id 0
      * @param auctionCount The number of price observations to get.
@@ -608,8 +604,6 @@ contract NounsAuctionHouseV2 is
 
         SettlementState memory settlementState;
         for (uint256 id = latestNounId; id > 0 && actualCount < auctionCount; --id) {
-            if (id <= 1820 && id % 10 == 0) continue; // Skip Nounder reward nouns
-
             settlementState = settlementHistory[id];
             require(settlementState.blockTimestamp > 1, 'Missing data');
             if (settlementState.winner == address(0)) continue; // Skip auctions with no bids
@@ -625,7 +619,7 @@ contract NounsAuctionHouseV2 is
      * @notice Get all past auction settlements starting at `startId` and settled before or at `endTimestamp`.
      * @param startId the first Noun ID to get prices for.
      * @param endTimestamp the latest timestamp for auctions
-     * @param skipEmptyValues if true, skips nounder reward ids and ids with missing data
+     * @param skipEmptyValues if true, skips ids with missing data
      * @return settlements An array of type `Settlement`, where each Settlement includes a timestamp,
      * the Noun ID of that auction, the winning bid amount, and the winner's address.
      */
@@ -673,7 +667,7 @@ contract NounsAuctionHouseV2 is
      * Includes auctions with no bids (blockTimestamp will be > 1)
      * @param startId the first Noun ID to get prices for.
      * @param endId end Noun ID (up to, but not including).
-     * @param skipEmptyValues if true, skips nounder reward ids and ids with missing data
+     * @param skipEmptyValues if true, skips ids with missing data
      * @return settlements An array of type `Settlement`, where each Settlement includes a timestamp,
      * the Noun ID of that auction, the winning bid amount, and the winner's address.
      */
